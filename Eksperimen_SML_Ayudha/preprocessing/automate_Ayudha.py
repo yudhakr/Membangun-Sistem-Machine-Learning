@@ -1,202 +1,267 @@
 """
 automate_Ayudha.py
-Script otomatis untuk preprocessing dataset Diabetes.
-Alur: load data -> preprocessing -> save data siap training.
+Preprocessing otomatis untuk Wine Classification Dataset.
+Workflow: load raw data -> clean -> preprocess -> split -> save.
 
 Author: Ayudha
 """
 
 import os
 import sys
+import logging
 
 import pandas as pd
 import numpy as np
-from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.feature_selection import SelectKBest, f_regression
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.feature_selection import SelectKBest, f_classif
 
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 # --- Konfigurasi ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RAW_DATA_PATH = os.path.join(BASE_DIR, "dataset_raw", "diabetes_raw.csv")
-PREPROCESSED_DATA_PATH = os.path.join(BASE_DIR, "preprocessing", "dataset_preprocessing.csv")
+RAW_DATA_PATH = os.path.join(BASE_DIR, "dataset_raw", "wine_raw.csv")
+PREPROC_DIR = os.path.join(BASE_DIR, "preprocessing")
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
-FEATURE_COUNT = 8
+TARGET_COL = "target"
+FEATURE_COUNT = 10
 
 
-def load_data(filepath: str = RAW_DATA_PATH) -> pd.DataFrame:
+def load_data(path: str) -> pd.DataFrame:
     """
-    Memuat dataset Diabetes.
+    Memuat dataset Wine dari file CSV.
 
     Parameters:
-        filepath (str): Path ke file CSV dataset raw.
+        path (str): Path ke file CSV dataset raw.
 
     Returns:
-        pd.DataFrame: DataFrame berisi data lengkap (fitur + target).
+        pd.DataFrame: DataFrame mentah.
     """
-    try:
-        # Coba load dari CSV jika file tersedia
-        if os.path.exists(filepath):
-            df = pd.read_csv(filepath)
-            print(f"[OK] Data berhasil dimuat dari: {filepath}")
-        else:
-            # Fallback: load langsung dari sklearn
-            print(f"[INFO] File {filepath} tidak ditemukan. Memuat dari Scikit-Learn...")
-            diabetes = load_diabetes()
-            df = pd.DataFrame(diabetes.data, columns=diabetes.feature_names)
-            df["target"] = diabetes.target
-
-            # Simpan sebagai raw dataset
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            df.to_csv(filepath, index=False)
-            print(f"[OK] Data raw disimpan ke: {filepath}")
-
-        print(f"[INFO] Shape dataset: {df.shape}")
-        return df
-
-    except Exception as e:
-        print(f"[ERROR] Gagal memuat data: {e}")
+    if not os.path.exists(path):
+        logger.error(f"File tidak ditemukan: {path}")
         sys.exit(1)
 
+    df = pd.read_csv(path)
+    logger.info(f"Data loaded: {df.shape[0]} rows, {df.shape[1]} columns")
+    logger.info(f"Columns: {list(df.columns)}")
+    return df
 
-def preprocess(df: pd.DataFrame) -> pd.DataFrame:
+
+def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Melakukan preprocessing pada dataset.
+    Membersihkan dataset: handling missing values, duplicate, dan encoding.
 
     Tahapan:
-    1. Handling missing values
-    2. Feature selection (SelectKBest)
-    3. Train-test split
-    4. Standard scaling
+    1. Handling missing values (isi dengan median jika ada)
+    2. Menghapus data duplikat
+    3. Encoding fitur kategorikal (jika ada)
 
     Parameters:
         df (pd.DataFrame): DataFrame mentah.
 
     Returns:
-        pd.DataFrame: DataFrame hasil preprocessing.
+        pd.DataFrame: DataFrame bersih.
     """
-    print("\n" + "=" * 50)
-    print("MEMULAI PREPROCESSING")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("DATA CLEANING")
+    logger.info("=" * 50)
 
     # --- 1. Handling Missing Values ---
-    print("\n[1] Handling Missing Values...")
-    missing_count = df.isnull().sum().sum()
-    if missing_count > 0:
+    logger.info("[1] Handling Missing Values...")
+    if df.isnull().sum().sum() > 0:
         for col in df.columns:
             if df[col].isnull().sum() > 0:
                 median_val = df[col].median()
                 df[col].fillna(median_val, inplace=True)
-                print(f"  - Kolom '{col}': {df[col].isnull().sum()} missing diisi median")
-        print(f"  Total missing values setelah handling: {df.isnull().sum().sum()}")
+                logger.info(f"  - {col}: filled with median={median_val:.4f}")
+        logger.info("  Missing values handled.")
     else:
-        print("  Tidak ada missing values. Data sudah bersih.")
+        logger.info("  No missing values found.")
 
-    # --- 2. Feature Selection ---
-    print("\n[2] Feature Selection (SelectKBest)...")
-    feature_names = [col for col in df.columns if col != "target"]
-    X = df[feature_names]
-    y = df["target"]
+    # --- 2. Handling Duplicate ---
+    logger.info("[2] Handling Duplicate Data...")
+    duplicate_count = df.duplicated().sum()
+    if duplicate_count > 0:
+        df.drop_duplicates(keep="first", inplace=True)
+        logger.info(f"  Removed {duplicate_count} duplicates.")
+        logger.info(f"  New shape: {df.shape}")
+    else:
+        logger.info("  No duplicates found.")
+
+    # --- 3. Encoding Categorical ---
+    logger.info("[3] Encoding Categorical Features...")
+    categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+    if categorical_cols:
+        le = LabelEncoder()
+        for col in categorical_cols:
+            df[col] = le.fit_transform(df[col])
+            logger.info(f"  - {col}: encoded")
+    else:
+        logger.info("  No categorical features found. Skipping encoding.")
+
+    logger.info("Data cleaning completed.")
+    return df
+
+
+def preprocess_data(df: pd.DataFrame) -> tuple:
+    """
+    Melakukan preprocessing: feature selection dan scaling.
+
+    Tahapan:
+    1. Feature selection dengan SelectKBest
+    2. Scaling dengan StandardScaler
+
+    Parameters:
+        df (pd.DataFrame): DataFrame bersih.
+
+    Returns:
+        Tuple (X, y, selected_features, scaler).
+    """
+    logger.info("=" * 50)
+    logger.info("DATA PREPROCESSING")
+    logger.info("=" * 50)
+
+    # --- 1. Feature Selection ---
+    logger.info("[1] Feature Selection...")
+    feature_cols = [col for col in df.columns if col != TARGET_COL]
+    X = df[feature_cols]
+    y = df[TARGET_COL]
 
     k = min(FEATURE_COUNT, X.shape[1])
-    selector = SelectKBest(score_func=f_regression, k=k)
+    selector = SelectKBest(score_func=f_classif, k=k)
     X_selected = selector.fit_transform(X, y)
 
-    selected_features = np.array(feature_names)[selector.get_support()]
+    selected_features = np.array(feature_cols)[selector.get_support()]
+
     feature_scores = pd.DataFrame({
-        "Fitur": feature_names,
+        "Fitur": feature_cols,
         "Skor": selector.scores_
     }).sort_values("Skor", ascending=False)
 
-    print(f"  10 fitur asli:")
-    print(feature_scores.to_string(index=False))
-    print(f"  Fitur terpilih ({k}): {list(selected_features)}")
+    logger.info(f"  Top-{k} features selected:")
+    for _, row in feature_scores.head(k).iterrows():
+        logger.info(f"    - {row['Fitur']}: {row['Skor']:.2f}")
 
-    # --- 3. Train-Test Split ---
-    print("\n[3] Train-Test Split...")
-    X_train, X_test, y_train, y_test = train_test_split(
-        X[selected_features], y,
-        test_size=TEST_SIZE,
-        random_state=RANDOM_STATE
-    )
-    print(f"  Training set: {X_train.shape}")
-    print(f"  Testing set : {X_test.shape}")
+    X = pd.DataFrame(X_selected, columns=selected_features)
+    logger.info(f"  X shape after selection: {X.shape}")
 
-    # --- 4. Standard Scaling ---
-    print("\n[4] Standard Scaling...")
+    # --- 2. Scaling ---
+    logger.info("[2] Standard Scaling...")
     scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    X = pd.DataFrame(X_scaled, columns=selected_features)
+    logger.info("  Scaling completed.")
 
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-
-    X_train_scaled = pd.DataFrame(X_train_scaled, columns=selected_features)
-    X_test_scaled = pd.DataFrame(X_test_scaled, columns=selected_features)
-
-    print("  Scaling selesai.")
-
-    # Gabungkan data training dan testing
-    df_train = X_train_scaled.copy()
-    df_train["target"] = y_train.values
-
-    df_test = X_test_scaled.copy()
-    df_test["target"] = y_test.values
-
-    df_result = pd.concat([df_train, df_test], axis=0).reset_index(drop=True)
-
-    print(f"\n[INFO] Dataset preprocessing akhir: {df_result.shape}")
-    return df_result
+    logger.info("Preprocessing completed.")
+    return X, y, selected_features, scaler
 
 
-def save_data(df: pd.DataFrame, filepath: str = PREPROCESSED_DATA_PATH) -> None:
+def split_data(X: pd.DataFrame, y: pd.Series) -> tuple:
+    """
+    Membagi data menjadi training dan testing set.
+
+    Parameters:
+        X (pd.DataFrame): Fitur.
+        y (pd.Series): Target.
+
+    Returns:
+        Tuple (X_train, X_test, y_train, y_test).
+    """
+    logger.info("=" * 50)
+    logger.info("TRAIN-TEST SPLIT")
+    logger.info("=" * 50)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y,
+        test_size=TEST_SIZE,
+        random_state=RANDOM_STATE,
+        stratify=y
+    )
+
+    logger.info(f"  X_train: {X_train.shape}")
+    logger.info(f"  X_test : {X_test.shape}")
+    logger.info(f"  y_train: {y_train.shape}")
+    logger.info(f"  y_test : {y_test.shape}")
+    logger.info(f"  Test size: {TEST_SIZE * 100:.0f}%")
+
+    return X_train, X_test, y_train, y_test
+
+
+def save_data(X_train: pd.DataFrame, X_test: pd.DataFrame,
+              y_train: pd.Series, y_test: pd.Series,
+              output_dir: str) -> None:
     """
     Menyimpan dataset hasil preprocessing ke file CSV.
 
     Parameters:
-        df (pd.DataFrame): DataFrame hasil preprocessing.
-        filepath (str): Path output file CSV.
+        X_train (pd.DataFrame): Training features.
+        X_test (pd.DataFrame): Testing features.
+        y_train (pd.Series): Training target.
+        y_test (pd.Series): Testing target.
+        output_dir (str): Direktori output.
     """
-    try:
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        df.to_csv(filepath, index=False)
-        print(f"\n[OK] Dataset preprocessing berhasil disimpan ke: {filepath}")
-        print(f"     Total: {df.shape[0]} baris, {df.shape[1]} kolom")
-        print(f"     Kolom: {list(df.columns)}")
-    except Exception as e:
-        print(f"[ERROR] Gagal menyimpan data: {e}")
-        sys.exit(1)
+    logger.info("=" * 50)
+    logger.info("SAVING DATASET")
+    logger.info("=" * 50)
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    files = {
+        "X_train.csv": X_train,
+        "X_test.csv": X_test,
+        "y_train.csv": pd.DataFrame(y_train, columns=[TARGET_COL]),
+        "y_test.csv": pd.DataFrame(y_test, columns=[TARGET_COL]),
+    }
+
+    for filename, data in files.items():
+        path = os.path.join(output_dir, filename)
+        data.to_csv(path, index=False)
+        logger.info(f"  Saved: {filename} ({data.shape})")
+
+    logger.info(f"All files saved to: {output_dir}")
 
 
 def main():
     """
-    Fungsi utama: orchestrate alur preprocessing.
+    Fungsi utama: orchestrate seluruh pipeline preprocessing.
     """
-    print("=" * 50)
-    print("  AUTOMATE PREPROCESSING - Diabetes Dataset")
-    print("=" * 50)
+    try:
+        logger.info("=" * 60)
+        logger.info("  AUTOMATE PREPROCESSING - Wine Dataset")
+        logger.info("=" * 60)
 
-    # 1. Load data
-    df = load_data()
+        # 1. Load
+        df = load_data(RAW_DATA_PATH)
 
-    # 2. EDA singkat
-    print("\n" + "=" * 50)
-    print("RINGKASAN DATA")
-    print("=" * 50)
-    print(f"  Jumlah baris : {df.shape[0]}")
-    print(f"  Jumlah kolom : {df.shape[1]}")
-    print(f"  Kolom        : {list(df.columns)}")
-    print(f"  Tipe data    :\n{df.dtypes.to_string()}")
+        # 2. EDA summary
+        logger.info(f"\nDataset info:\n  Rows: {df.shape[0]}\n  Cols: {df.shape[1]}")
 
-    # 3. Preprocess
-    df_preprocessed = preprocess(df)
+        # 3. Clean
+        df = clean_data(df)
 
-    # 4. Save data
-    save_data(df_preprocessed)
+        # 4. Preprocess
+        X, y, selected_features, scaler = preprocess_data(df)
 
-    print("\n" + "=" * 50)
-    print("  PREPROCESSING SELESAI - Data siap untuk training!")
-    print("=" * 50)
+        # 5. Split
+        X_train, X_test, y_train, y_test = split_data(X, y)
+
+        # 6. Save
+        save_data(X_train, X_test, y_train, y_test, PREPROC_DIR)
+
+        logger.info("=" * 60)
+        logger.info("  PREPROCESSING COMPLETED SUCCESSFULLY!")
+        logger.info(f"  Output: {PREPROC_DIR}")
+        logger.info("=" * 60)
+
+    except Exception as e:
+        logger.exception(f"Pipeline failed: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
