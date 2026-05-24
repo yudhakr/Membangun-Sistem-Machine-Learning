@@ -3,7 +3,6 @@ modelling_tuning.py
 Hyperparameter tuning dengan GridSearchCV dan manual logging MLflow.
 Tidak menggunakan mlflow.autolog() - semua logging dilakukan manual.
 
-Level: SKILLED (+ ADVANCE dengan DagsHub)
 """
 
 import os
@@ -63,8 +62,8 @@ PARAM_GRID = {
 
 # ADVANCE: DagsHub configuration
 USE_DAGSHUB = False
-DAGSHUB_USERNAME = "<USERNAME>"
-DAGSHUB_REPO = "<REPO_NAME>"
+DAGSHUB_USERNAME = "yudhakr"
+DAGSHUB_REPO = "Membangun-Sistem-Machine-Learning"
 
 
 # ============================================================

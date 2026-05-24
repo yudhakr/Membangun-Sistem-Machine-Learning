@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1779602028725
+current_stage: None
+description: ''
+last_updated_timestamp: 1779602028725
+name: Wine_RF_Tuned
+run_id: 0880d62b760d4b3c8b14820683e36f6e
+run_link: ''
+source: mlflow-artifacts:/292923283209427752/0880d62b760d4b3c8b14820683e36f6e/artifacts/random_forest_model
+status: READY
+status_message: null
+storage_location: mlflow-artifacts:/292923283209427752/0880d62b760d4b3c8b14820683e36f6e/artifacts/random_forest_model
+user_id: null
+version: 2
