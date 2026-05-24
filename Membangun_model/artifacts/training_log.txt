@@ -1,0 +1,25 @@
+TRAINING LOG
+==================================================
+Timestamp: 2026-05-24T12:42:20.506568
+Tracking URI: http://127.0.0.1:5000
+Experiment: Wine_Classification_Tuning
+
+Best Params:
+{
+  "criterion": "gini",
+  "max_depth": null,
+  "min_samples_leaf": 4,
+  "min_samples_split": 10,
+  "n_estimators": 50
+}
+
+Metrics:
+{
+  "accuracy": 1.0,
+  "precision_macro": 1.0,
+  "recall_macro": 1.0,
+  "f1_macro": 1.0,
+  "precision_weighted": 1.0,
+  "recall_weighted": 1.0,
+  "f1_weighted": 1.0
+}
