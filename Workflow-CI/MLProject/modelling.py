@@ -36,6 +36,10 @@ import mlflow.sklearn
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+# MLflow tracking URI: fallback ke local file jika env var tidak diset
+MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "file:./mlruns")
+mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
 DATA_PATH = os.path.join(os.path.dirname(__file__), "dataset_preprocessing", "dataset_preprocessing.csv")
 TARGET_COL = "target"
 TARGET_NAMES = ["class_0", "class_1", "class_2"]
@@ -77,7 +81,7 @@ def evaluate(model, X_test, y_test):
 
 
 def save_confusion_matrix(model, X_test, y_test, save_path: str):
-    """Simpan confusion matrix sebagai PNG."""
+    """Simpan confusion matrix dalam bentuk PNG."""
     y_pred = model.predict(X_test)
     fig, ax = plt.subplots(figsize=(8, 6))
     cm = confusion_matrix(y_test, y_pred)
