@@ -62,3 +62,41 @@ Workflow `.github/workflows/preprocessing.yml` akan otomatis:
 - Install dependencies
 - Menjalankan `automate_Ayudha.py`
 - Mengupload artifact hasil preprocessing
+
+
+```bash
+# 1. Aktifkan virtual environment
+venv\Scripts\activate
+
+# 2. Install dependency
+pip install -r requirements.txt
+
+# 3. Jalankan MLflow UI
+mlflow ui
+```
+
+Buka browser:
+
+```bash
+http://127.0.0.1:5000
+```
+
+Terminal baru:
+
+```bash
+# Basic
+python modelling.py
+
+# Skilled / Advance
+python modelling_tuning.py
+```
+
+Hasil training akan muncul di MLflow UI berupa:
+
+* Metrics
+* Parameters
+* Artifacts
+* Model
+
+Sesuai ketentuan Kriteria 2 submission MSML. 
+
