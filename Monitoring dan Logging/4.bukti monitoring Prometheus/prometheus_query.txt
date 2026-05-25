@@ -1,0 +1,17 @@
+# Bukti Monitoring Prometheus
+
+## Cara screenshot:
+1. Buka http://localhost:9090
+2. Query: `mlflow_request_count_total`
+3. Screenshot tampilan graph
+4. Simpan sebagai `prometheus_query.jpg`
+
+## Query yang perlu di-screenshot:
+- `mlflow_request_count_total`
+- `mlflow_request_latency_seconds_bucket`
+- `mlflow_failed_requests_total`
+- `system_cpu_usage_percent`
+- `system_memory_usage_bytes`
+- `system_disk_usage_bytes`
+- `mlflow_prediction_count_total`
+- `mlflow_response_time_seconds_bucket`

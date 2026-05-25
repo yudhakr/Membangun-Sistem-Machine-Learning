@@ -14,8 +14,8 @@ import numpy as np
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Endpoint MLflow Model Serving
-MODEL_ENDPOINT = "http://127.0.0.1:1234/invocations"
+# Endpoint MLflow Model Serving (port 5001 dengan --no-conda)
+MODEL_ENDPOINT = "http://127.0.0.1:5001/invocations"
 
 # Sample data Wine (3 sampel, satu untuk setiap kelas)
 SAMPLE_DATA = [
@@ -137,11 +137,11 @@ def main():
 
     # Test koneksi
     try:
-        health = requests.get("http://127.0.0.1:1234/ping", timeout=5)
+        health = requests.get("http://127.0.0.1:5001/ping", timeout=5)
         logger.info(f"  Server status: {'ONLINE' if health.status_code == 200 else 'UNKNOWN'}")
     except requests.exceptions.ConnectionError:
         logger.error("  Server is OFFLINE! Jalankan 'mlflow models serve' terlebih dahulu.")
-        logger.error("  Command: mlflow models serve --model-uri runs:/<RUN_ID>/model --port 1234 --no-conda")
+        logger.error("  Command: mlflow models serve -m runs:/<RUN_ID>/model -p 5001 --no-conda")
         return
 
     logger.info("Starting inference...")

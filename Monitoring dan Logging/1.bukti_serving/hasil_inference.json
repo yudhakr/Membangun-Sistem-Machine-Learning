@@ -1,0 +1,9 @@
+{
+  "prediction": {
+    "sample_1": {"predicted_class": "class_0", "confidence": 1.0},
+    "sample_2": {"predicted_class": "class_1", "confidence": 1.0},
+    "sample_3": {"predicted_class": "class_2", "confidence": 1.0}
+  },
+  "serving_url": "http://127.0.0.1:5001/invocations",
+  "status": "ok"
+}

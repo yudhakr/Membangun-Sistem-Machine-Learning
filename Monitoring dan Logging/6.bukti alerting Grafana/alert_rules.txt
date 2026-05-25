@@ -1,0 +1,11 @@
+# Bukti Alerting Grafana
+
+## Cara screenshot:
+1. Buka Grafana → Alerting → Alert rules
+2. Screenshot rules alert yang sudah dibuat
+3. Simpan sebagai `alert_rules.jpg`
+
+## Alert yang harus dibuat:
+1. **CPU Usage > 80%** - Warning jika CPU di atas 80%
+2. **Failed Requests > threshold** - Error jika failed request tinggi
+3. **Response Time > 2s** - Warning jika response time lambat

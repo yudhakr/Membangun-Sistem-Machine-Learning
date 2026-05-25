@@ -1,5 +1,6 @@
 Kriteria 1
 
+link github :https://github.com/yudhakr/Membangun-Sistem-Machine-Learning.git
 # Eksperimen Preprocessing - Wine Classification
 
 ## Deskripsi
@@ -99,5 +100,74 @@ Hasil training akan muncul di MLflow UI berupa:
 * Parameters
 * Artifacts
 * Model
+
+
+
+
+## 1. Struktur Folder Keiteria 2
+
+```
+Membangun_model/
+├── modelling.py                 # Training + MLflow autolog + manual log_model
+├── dataset_preprocessing.csv    # Dataset (opsional, tidak digunakan)
+├── screenshoot_dashboard.jpg    # Screenshot MLflow Dashboard
+├── screenshoot_artifak.jpg      # Screenshot MLflow Artifacts
+├── requirements.txt             # Dependency Python
+└── README.md                    # Dokumentasi
+```
+
+## 2. Cara Menjalankan Project
+
+### Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### Jalankan Training
+
+```bash
+python modelling.py
+```
+
+
+### Jalankan MLflow UI
+
+```bash
+mlflow ui
+```
+
+Buka browser: **http://127.0.0.1:5000**
+
+## 3. Detail Logging MLflow
+
+| Yang di-log | Method |
+|-------------|--------|
+| Parameters model | `mlflow.sklearn.autolog()` otomatis |
+| Metrics (accuracy) | `mlflow.sklearn.autolog()` otomatis |
+| Model artifact | `mlflow.sklearn.autolog()` otomatis |
+| Model (manual) | `mlflow.sklearn.log_model(sk_model=model, artifact_path="model")` |
+
+### Struktur Artifact Model
+
+Setelah training selesai, pada MLflow UI akan muncul folder **artifacts/model/** yang berisi:
+
+```
+artifacts/model/
+├── MLmodel
+├── conda.yaml
+├── model.pkl
+├── python_env.yaml
+└── requirements.txt
+```
+
+## 4. Requirements
+
+```
+pandas
+numpy
+scikit-learn
+mlflow
+```
 
 

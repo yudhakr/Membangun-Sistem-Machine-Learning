@@ -1,4 +1,4 @@
-prometheus_client==0.21.1
-psutil==6.1.1
-requests==2.32.3
-numpy==2.2.0
+prometheus_client
+psutil
+requests
+numpy
