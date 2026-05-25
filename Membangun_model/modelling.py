@@ -12,10 +12,12 @@ import logging
 
 import pandas as pd
 import numpy as np
+from sklearn.datasets import load_wine
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import mlflow
+import mlflow.sklearn
 
 # Setup logging
 logging.basicConfig(
@@ -25,27 +27,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # --- Konfigurasi ---
-DATA_PATH = os.path.join(os.path.dirname(__file__), "dataset_preprocessing.csv")
 TRACKING_URI = "http://127.0.0.1:5000"
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 TARGET_COL = "target"
 
 
-def load_data(path: str) -> pd.DataFrame:
+def load_data() -> pd.DataFrame:
     """
-    Memuat dataset preprocessing dari CSV.
-
-    Parameters:
-        path (str): Path ke file CSV.
+    Memuat dataset Wine dari Scikit-Learn.
 
     Returns:
         pd.DataFrame: DataFrame berisi fitur dan target.
     """
-    if not os.path.exists(path):
-        logger.error(f"File tidak ditemukan: {path}")
-        sys.exit(1)
-    df = pd.read_csv(path)
+    wine = load_wine(as_frame=True)
+    df = wine.data.copy()
+    df[TARGET_COL] = wine.target
     logger.info(f"Data loaded: {df.shape[0]} rows, {df.shape[1]} columns")
     return df
 
@@ -129,19 +126,22 @@ if __name__ == "__main__":
         logger.info("=" * 50)
 
         # Load data
-        df = load_data(DATA_PATH)
+        df = load_data()
 
         # Split data
         X_train, X_test, y_train, y_test = split_data(df, TARGET_COL)
 
         # Autolog MLflow
-        mlflow.autolog()
+        mlflow.sklearn.autolog()
 
         # Train model
         model = train_model(X_train, y_train)
 
         # Evaluate
         evaluate_model(model, X_test, y_test, target_names)
+
+        # Manual model logging ke artifacts/model/
+        mlflow.sklearn.log_model(sk_model=model, artifact_path="model")
 
         logger.info("Modelling selesai. Cek MLflow UI untuk hasil.")
         print(f"\nMLflow UI: {TRACKING_URI}")
