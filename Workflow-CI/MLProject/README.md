@@ -165,3 +165,5 @@ Yang di-log ke MLflow:
   - Confusion matrix (PNG)
   - Feature importance plot (PNG)
   - Model artifact (MLflow sklearn format)
+
+  link repo docker :https://hub.docker.com/r/yudhakr/wine-classification/

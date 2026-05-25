@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/0/9230b0cd70034f04971838237f332717/artifacts
+end_time: 1779692353582
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 9230b0cd70034f04971838237f332717
+run_name: carefree-gull-93
+run_uuid: 9230b0cd70034f04971838237f332717
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779692314758
+status: 3
+tags: []
+user_id: Lenovo
