@@ -1,6 +1,0 @@
-artifact_location: mlflow-artifacts:/292923283209427752
-creation_time: 1779601257552
-experiment_id: '292923283209427752'
-last_update_time: 1779601257552
-lifecycle_stage: active
-name: Wine_Classification_Tuning

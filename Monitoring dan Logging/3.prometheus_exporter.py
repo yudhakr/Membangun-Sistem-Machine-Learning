@@ -5,7 +5,6 @@ Berjalan di http://localhost:8000/metrics
 """
 
 import json
-import os
 import sys
 import time
 import logging
