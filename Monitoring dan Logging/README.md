@@ -469,6 +469,8 @@ Prometheus secara berkala (tiap `scrape_interval` detik) mengakses URL `/metrics
 
 ### 4.3 Struktur `prometheus.yml`
 
+File `2.prometheus.yml` yang sudah benar:
+
 ```yaml
 global:
   scrape_interval: 5s
@@ -476,8 +478,11 @@ global:
 scrape_configs:
   - job_name: "wine_monitoring"
     static_configs:
-      - targets: ["localhost:8000"]
+      - targets:
+          - "host.docker.internal:8000"
 ```
+
+> **Catatan:** Jika Prometheus dijalankan **manual** (langsung di Windows, bukan Docker), gunakan `localhost:8000`. Jika Prometheus dijalankan **via Docker**, gunakan `host.docker.internal:8000`. File `2.prometheus.yml` di project ini sudah menggunakan `host.docker.internal` karena via Docker.
 
 ### 4.4 Penjelasan Setiap Bagian
 
@@ -485,23 +490,66 @@ scrape_configs:
 |--------|-------|------|
 | `scrape_interval: 5s` | 5 detik | Prometheus mengambil data setiap 5 detik |
 | `job_name: "wine_monitoring"` | Nama job | Label untuk mengidentifikasi sumber data |
-| `targets: ["localhost:8000"]` | alamat:port | Alamat exporter yang akan di-scrape |
+| `targets: ["host.docker.internal:8000"]` | alamat:port | Alamat exporter yang akan di-scrape |
 
 **Mengapa 5 detik?** Karena exporter juga mengirim request ke MLflow setiap 5 detik. Interval scraping harus sama atau lebih cepat agar tidak ada data yang terlewat.
 
+### ⚠️ PENTING: Perbedaan `localhost` Host vs Docker
+
+Ini adalah **penyebab paling umum** Prometheus target DOWN saat menggunakan Docker.
+
+#### `localhost` di Windows Host
+
+Ketika Anda menjalankan:
+
+```bash
+python 3.prometheus_exporter.py
+```
+
+Exporter berjalan di **Windows** pada `http://localhost:8000/metrics`. `localhost` di sini mengacu ke ** komputer Windows Anda sendiri **.
+
+Anda bisa mengakses `http://localhost:8000/metrics` dari browser Windows karena browser juga berjalan di Windows yang sama.
+
+#### `localhost` di Docker Container
+
+Ketika Prometheus berjalan di **Docker container**, `localhost` di dalam container mengacu ke **container itu sendiri**, BUKAN komputer Windows Anda.
+
+Jadi ketika `prometheus.yml` menggunakan:
+```yaml
+targets: ["localhost:8000"]
+```
+
+Prometheus di dalam Docker akan mencoba mengakses `localhost:8000` **di dalam container** — bukan di Windows. Karena tidak ada aplikasi yang berjalan di port 8000 di dalam container, maka:
+
+```
+Error scraping target: Get "http://localhost:8000/metrics": dial tcp [::1]:8000: connect: connection refused
+```
+
+#### Solusi: `host.docker.internal`
+
+Docker menyediakan DNS khusus bernama `host.docker.internal` yang selalu mengarah ke **komputer host** (Windows) dari dalam container.
+
+| Di dalam Docker container | Mengarah ke |
+|--------------------------|-------------|
+| `localhost` | Container itu sendiri |
+| `host.docker.internal` | Komputer Windows (host) |
+
+Dengan mengganti `localhost:8000` menjadi `host.docker.internal:8000`, Prometheus di dalam container akan bisa mengakses exporter yang berjalan di Windows.
+
 ### 4.5 Cara Menjalankan Prometheus di Windows
 
-**Manual (download dari https://prometheus.io/download/):**
+**Opsi 1 — Manual (Prometheus langsung di Windows):**
 
-1. Download `prometheus-2.x.x.windows-amd64.zip`
+1. Download `prometheus-2.x.x.windows-amd64.zip` dari https://prometheus.io/download/
 2. Ekstrak ke folder, misal `C:\prometheus`
-3. Copy file `2.prometheus.yml` atau jalankan dengan:
+3. **Ubah sementara** `2.prometheus.yml`: ganti `host.docker.internal` menjadi `localhost`
+4. Jalankan:
 
 ```bash
 prometheus.exe --config.file="E:\Dicoding\Membangun Sistem Machine Learning\Membangun Sistem Machine Learning\Monitoring dan Logging\2.prometheus.yml"
 ```
 
-**Via Docker (lebih mudah):**
+**Opsi 2 — Via Docker (direkomendasikan):**
 
 ```bash
 docker run -d \
@@ -511,7 +559,7 @@ docker run -d \
   prom/prometheus
 ```
 
-Atau via docker-compose (direkomendasikan):
+**Opsi 3 — Via docker-compose (paling mudah):**
 
 ```bash
 cd "Monitoring dan Logging"
@@ -522,7 +570,7 @@ docker compose up -d
 
 #### Error: `query.active` / Port already in use
 
-**Masalah:** Port 9090 sudah dipakai.
+**Masalah:** Port 9090 sudah dipakai oleh aplikasi lain.
 
 **Cek:**
 ```bash
@@ -533,14 +581,41 @@ netstat -ano | findstr :9090
 - Hentikan proses yang memakai port 9090
 - Atau jalankan Prometheus di port lain: `--web.listen-address=0.0.0.0:9091`
 
-#### Error: Targets DOWN
+#### Error: Targets DOWN — connection refused
 
-**Penyebab:** Prometheus tidak bisa menghubungi exporter di `localhost:8000`.
+**Masalah:** Prometheus tidak bisa menghubungi exporter.
 
-**Cek:**
-1. Apakah exporter sudah jalan? `python 3.prometheus_exporter.py`
-2. Apakah port benar? Cek di `http://localhost:8000/metrics`
-3. Apakah firewall memblokir?
+**Error yang muncul:**
+```
+Get "http://localhost:8000/metrics": dial tcp [::1]:8000: connect: connection refused
+```
+
+Ini terjadi karena:
+1. ❌ Prometheus di **Docker** menggunakan `localhost:8000` → `localhost` mengacu ke container, bukan Windows
+2. ❌ Atau exporter belum dijalankan
+
+**Solusi:**
+
+Pastikan **dua** hal ini benar:
+1. **Exporter berjalan** di Windows: `python 3.prometheus_exporter.py`
+2. **prometheus.yml** menggunakan `host.docker.internal:8000` (bukan `localhost`) jika Prometheus via Docker
+
+#### Cek koneksi dari dalam container
+
+Jika ragu, test koneksi dari dalam container:
+
+```bash
+# Masuk ke container Prometheus
+docker exec -it prometheus sh
+
+# Test koneksi ke exporter (dari dalam container)
+wget http://host.docker.internal:8000/metrics
+
+# Keluar
+exit
+```
+
+Jika wget berhasil mengambil data, maka koneksi dari container ke host berjalan lancar.
 
 ### 4.7 Cara Memastikan Targets UP
 
@@ -548,16 +623,18 @@ netstat -ano | findstr :9090
 2. Cari baris `wine_monitoring`
 3. Status harus **UP** (hijau)
 
+Contoh tampilan jika berhasil:
 ```
-Status:  UP
-Labels:  job="wine_monitoring"
-Scrape URL:  http://localhost:8000/metrics
-Last Scrape:  2.3s ago
+Endpoint               | Status | Labels                        | Last Scrape
+-----------------------|--------|-------------------------------|--------------------
+http://host.docker.internal:8000/metrics  | UP     | job="wine_monitoring"         | 2.3s ago
 ```
 
 Jika masih DOWN, periksa:
-- Exporter berjalan? (`python 3.prometheus_exporter.py`)
-- Port exporter sesuai dengan `prometheus.yml`?
+- ✅ Exporter berjalan? — `python 3.prometheus_exporter.py`
+- ✅ Port exporter sesuai dengan `prometheus.yml`? — port harus 8000
+- ✅ Menggunakan `host.docker.internal`? — jika Prometheus di Docker
+- ✅ Firewall Windows tidak memblokir port 8000?
 
 ### 4.8 Cara Menggunakan Query Prometheus
 
@@ -705,9 +782,16 @@ Setelah login pertama, Grafana akan meminta ubah password. Klik **Skip** jika ti
 2. Kiri: **Connections** → **Add new connection**
 3. Cari **Prometheus**, klik
 4. Klik **Add new data source**
-5. Isi **URL**: `http://localhost:9090`
-   - Jika Grafana via Docker: `http://host.docker.internal:9090`
-   - Jika Grafana lokal: `http://localhost:9090`
+5. Isi **URL** sesuai kondisi Anda:
+
+   | Kondisi | URL |
+   |---------|-----|
+   | Grafana **manual** di Windows + Prometheus **manual** di Windows | `http://localhost:9090` |
+   | Grafana **Docker** + Prometheus **Docker** (via docker-compose) | `http://prometheus:9090` |
+   | Grafana **Docker** + Prometheus **manual** di Windows | `http://host.docker.internal:9090` |
+
+   > **⚠️ host.docker.internal:** Jika Grafana di dalam container dan Prometheus di Windows, `localhost:9090` dari dalam container akan mengarah ke container itu sendiri, bukan ke Windows. Gunakan `host.docker.internal:9090` sebagai gantinya.
+
 6. Scroll ke bawah, klik **Save & Test**
 7. Harus muncul **"Data source is working"** (hijau)
 
@@ -874,6 +958,8 @@ services:
 - `volumes` — File konfigurasi prometheus.yml di-mount ke container
 - `depends_on` — Grafana akan start setelah Prometheus
 - `restart: unless-stopped` — Auto-restart jika container mati
+
+> **⚠️ Penting:** Karena Prometheus berjalan di dalam container, file `2.prometheus.yml` harus menggunakan `host.docker.internal:8000` (bukan `localhost:8000`) agar bisa mengakses exporter di Windows. Lihat penjelasan detail di **Bagian 4.3–4.4**.
 
 ### 6.4 Cara Menjalankan
 
