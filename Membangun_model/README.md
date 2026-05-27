@@ -2,7 +2,18 @@
 
 ## 1. Deskripsi
 
-Project ini melatih model **RandomForestClassifier** pada dataset **Wine** dari Scikit-Learn dengan **MLflow autolog** dan **manual artifact logging** untuk memenuhi Kriteria 2 submission Dicoding.
+Project ini memenuhi **Kriteria 2** submission Dicoding dengan dua level:
+
+| Level | File | Metode |
+|-------|------|--------|
+| **Basic** | `modelling.py` | `mlflow.sklearn.autolog()` — tanpa manual logging |
+| **Skilled / Advance** | `modelling_tuning.py` | GridSearchCV + manual logging + artifact |
+
+Dataset: **Wine Dataset** (Scikit-Learn bawaan), 178 sampel, 13 fitur, 3 kelas.
+
+Algoritma: **RandomForestClassifier**.
+
+---
 
 ## 2. Cara Menjalankan
 
@@ -18,105 +29,140 @@ pip install -r requirements.txt
 mlflow server --host 127.0.0.1 --port 5000
 ```
 
-Biarkan server tetap berjalan. Tracking UI: **http://127.0.0.1:5000**
+Buka **http://127.0.0.1:5000** untuk UI.
 
-### 2.3 Jalankan Training
+### 2.3 Jalankan Basic (autolog only)
 
 ```bash
 python modelling.py
 ```
 
 Script akan:
-1. Memuat dataset Wine dari Scikit-Learn
-2. Split data train/test (80:20)
-3. Mengaktifkan `mlflow.sklearn.autolog()` untuk logging otomatis
-4. Melatih RandomForestClassifier
-5. Mencatat accuracy dan classification report
-6. **Manual artifact logging:**
-   - `confusion_matrix.png`
-   - `classification_report.txt`
-   - `feature_importance.png`
-7. Mencatat model ke `artifacts/model/`
+- Load dataset Wine dari Scikit-Learn
+- Split train/test (80:20, stratified)
+- `mlflow.sklearn.autolog()` aktif → otomatis catat **params**, **metrics**, **model**, **estimator.html**
+- Latih RandomForestClassifier (n_estimators=100, max_depth=10)
+- Cetak accuracy dan classification report
+
+**Tidak ada manual logging.** Semua dicatat otomatis oleh autolog.
+
+### 2.4 Jalankan Skilled / Advance
+
+```bash
+python modelling_tuning.py
+```
+
+Script akan:
+- Load wine dataset (via CSV)
+- GridSearchCV (5-fold) untuk hyperparameter tuning
+- Manual logging params, metrics, artifacts via MLflow
+- Log confusion_matrix.png, classification_report.txt, feature_importance.png, model_summary.txt, training_log.txt, roc_curve.png
+- Log model terbaik ke MLflow
+
+---
 
 ## 3. Struktur Artifact MLflow
 
-Setelah training selesai, di MLflow UI akan muncul:
+### Basic (`modelling.py` — autolog only)
+
+Setelah `python modelling.py`, MLflow akan menghasilkan:
 
 ```
-<run_id>/
-├── metrics/
-│   ├── accuracy                    (autolog)
-│   └── training_score              (autolog)
-├── params/
-│   ├── max_depth                   (autolog)
-│   ├── n_estimators                (autolog)
-│   ├── random_state                (autolog)
-│   └── ...
-├── tags/
+Run <ID>
+├── metrics: accuracy, training_score
+├── params: max_depth, n_estimators, random_state, ...
 ├── artifacts/
-│   ├── model/                      (log_model manual)
+│   ├── model/                          ← autolog
 │   │   ├── MLmodel
 │   │   ├── conda.yaml
 │   │   ├── model.pkl
 │   │   ├── python_env.yaml
 │   │   └── requirements.txt
-│   ├── model_analysis/             (manual artifact)
-│   │   ├── confusion_matrix.png
-│   │   ├── classification_report.txt
-│   │   └── feature_importance.png
-│   └── estimator.html              (autolog)
-└── ...
+│   └── estimator.html                  ← autolog
 ```
+
+### Skilled (`modelling_tuning.py` — manual)
+
+Setelah `python modelling_tuning.py`:
+
+```
+Run <ID>
+├── metrics: accuracy, precision_macro, recall_macro, f1_macro, ...
+├── params: best_*, dataset_shape, cv_folds, ...
+├── artifacts/
+│   ├── random_forest_model/            ← manual log_model
+│   │   ├── MLmodel
+│   │   ├── conda.yaml
+│   │   ├── model.pkl
+│   │   ├── python_env.yaml
+│   │   └── requirements.txt
+│   ├── evaluation_plots/
+│   │   ├── confusion_matrix.png
+│   │   └── roc_curve.png
+│   ├── evaluation_reports/
+│   │   └── classification_report.txt
+│   └── model_analysis/
+│       ├── feature_importance.png
+│       ├── model_summary.txt
+│       └── training_log.txt
+```
+
+---
 
 ## 4. Cara Screenshot untuk Submission
 
 ### 4.1 Screenshot Dashboard (`screenshoot_dashboard.jpg`)
 
+Langkah:
 1. Buka **http://127.0.0.1:5000**
-2. Klik experiment **Wine_Classification_Basic**
-3. Pilih **run terbaru** (paling atas)
+2. Di sidebar kiri, klik **Wine_Classification_Basic** (jangan klik run-nya)
+3. Halaman yang muncul adalah **Experiment View** — berisi **daftar semua run**
 4. Screenshot seluruh halaman yang memperlihatkan:
-   - **Run ID** (di bagian atas)
-   - **Metrics** (accuracy, training_score)
-   - **Parameters** (n_estimators, max_depth, random_state, dll)
-5. Simpan sebagai `screenshoot_dashboard.jpg`
+   - **Kolom Run ID / Date** (daftar run)
+   - **Kolom Metrics** (accuracy, training_score)
+   - **Kolom Parameters** (n_estimators, max_depth, dll)
+   - **Source** (modelling.py)
+5. **Jangan** klik ke dalam detail run — screenshot dari halaman daftar experiment
+
+> ⚠️ **Perhatian:** Reviewer meminta screenshot **halaman daftar experiment**, bukan halaman detail/overview satu run. Pastikan yang di-screenshot adalah tabel yang menampilkan semua run beserta metrics dan parameters-nya.
 
 ### 4.2 Screenshot Artifact (`screenshoot_artifak.jpg`)
 
-1. Di halaman run yang sama, scroll ke **Artifacts** (sebelah kanan)
-2. Klik folder **model/**
-3. Screenshot yang memperlihatkan:
+Langkah:
+1. Klik salah satu **Run ID** pada tabel experiment
+2. Scroll ke bagian **Artifacts** (panel kanan)
+3. Klik folder **model/** untuk membukanya
+4. Screenshot yang memperlihatkan:
    - `MLmodel`
    - `conda.yaml`
    - `model.pkl`
    - `python_env.yaml`
    - `requirements.txt`
-4. Buka folder **model_analysis/**
-5. Screenshot yang memperlihatkan:
-   - `confusion_matrix.png`
-   - `classification_report.txt`
-   - `feature_importance.png`
-6. Simpan sebagai `screenshoot_artifak.jpg`
+   - `estimator.html` (jika terlihat)
+5. Simpan sebagai `screenshoot_artifak.jpg`
 
-### Tips Screenshot
+---
 
-- **Full window screenshot** — jangan crop terlalu sempit
-- **Pastikan folder model/** terbuka — perlihatkan kelima file di dalamnya
-- **Sertakan estimator.html** jika terlihat di artifacts (hasil autolog)
+## 5. Checklist Reviewer
 
-## 5. Checklist Artifact
+| Item | Ada di Basic? | Ada di Skilled? |
+|------|:---:|:---:|
+| `mlflow.sklearn.autolog()` | ✅ | ❌ (manual) |
+| metrics: accuracy | ✅ (autolog) | ✅ (manual) |
+| params: n_estimators, max_depth | ✅ (autolog) | ✅ (manual) |
+| `model/MLmodel` | ✅ (autolog) | ✅ (manual) |
+| `model/model.pkl` | ✅ (autolog) | ✅ (manual) |
+| `model/conda.yaml` | ✅ (autolog) | ✅ (manual) |
+| `model/python_env.yaml` | ✅ (autolog) | ✅ (manual) |
+| `model/requirements.txt` | ✅ (autolog) | ✅ (manual) |
+| `estimator.html` | ✅ (autolog) | ❌ |
+| confusion_matrix.png | ❌ | ✅ |
+| classification_report.txt | ❌ | ✅ |
+| feature_importance.png | ❌ | ✅ |
+| Screenshot dashboard | ✅ | ✅ |
+| Screenshot artifact | ✅ | ✅ |
 
-| Artifact | Sumber | Wajib untuk Kriteria 2 |
-|----------|--------|------------------------|
-| `model/MLmodel` | `mlflow.sklearn.log_model()` | ✅ |
-| `model/conda.yaml` | `mlflow.sklearn.log_model()` | ✅ |
-| `model/model.pkl` | `mlflow.sklearn.log_model()` | ✅ |
-| `model/python_env.yaml` | `mlflow.sklearn.log_model()` | ✅ |
-| `model/requirements.txt` | `mlflow.sklearn.log_model()` | ✅ |
-| `estimator.html` | `mlflow.sklearn.autolog()` | ✅ (auto) |
-| `confusion_matrix.png` | manual `log_artifact()` | ✅ (skilled) |
-| `classification_report.txt` | manual `log_artifact()` | ✅ (skilled) |
-| `feature_importance.png` | manual `log_artifact()` | ✅ (advance) |
+---
 
 ## 6. Requirements
 
@@ -126,4 +172,5 @@ numpy
 scikit-learn
 mlflow
 matplotlib
+seaborn
 ```

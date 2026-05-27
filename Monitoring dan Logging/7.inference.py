@@ -144,7 +144,7 @@ def main():
         logger.error("  Command: mlflow models serve -m runs:/<RUN_ID>/model -p 5001 --no-conda")
         return
 
-    logger.info("Starting inference...")
+    logger.info("Sending predictions...")
 
     # Kirim prediksi
     results = predict_batch(SAMPLE_DATA)
