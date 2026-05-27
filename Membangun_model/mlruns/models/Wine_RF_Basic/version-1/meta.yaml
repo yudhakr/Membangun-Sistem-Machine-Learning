@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1779861606669
+current_stage: None
+description: ''
+last_updated_timestamp: 1779861606669
+name: Wine_RF_Basic
+run_id: fc117f595ea746938e2bcc7f2c360d64
+run_link: ''
+source: mlflow-artifacts:/971315440792503065/fc117f595ea746938e2bcc7f2c360d64/artifacts/model
+status: READY
+status_message: null
+storage_location: mlflow-artifacts:/971315440792503065/fc117f595ea746938e2bcc7f2c360d64/artifacts/model
+user_id: null
+version: 1
